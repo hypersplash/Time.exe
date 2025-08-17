@@ -1,0 +1,334 @@
+#include "raylib.h"
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <iostream>
+#include <unordered_map>
+#include <vector>
+#include <deque>
+
+// Constants
+const float PAUSE_OVERLAY_ALPHA = 0.6f;
+const float CONSOLE_BACKGROUND_ALPHA = 0.8f;
+const int PAUSE_BOX_WIDTH = 300;
+const int PAUSE_BOX_HEIGHT = 150;
+const int CONSOLE_LINE_SPACING = 4;
+const int FALLBACK_TEXTURE_SIZE = 32;
+
+// --- Console output capture ---
+class ConsoleCapture {
+private:
+    std::deque<std::string> lines;
+    static const int MAX_LINES = 15;
+    int maxDisplayChars = 50; // Will be updated based on console width
+    
+public:
+    ConsoleCapture() {
+        // deque doesn't need reserve() - it manages memory efficiently
+    }
+    
+    void setMaxDisplayChars(int maxChars) {
+        maxDisplayChars = maxChars;
+    }
+    
+    void addLine(const std::string& line) {
+        std::string truncated = line;
+        if (truncated.length() > static_cast<size_t>(maxDisplayChars)) {
+            truncated = truncated.substr(0, maxDisplayChars - 3) + "...";
+        }
+        lines.push_back(truncated);
+        if (lines.size() > MAX_LINES) {
+            lines.pop_front();
+        }
+    }
+    
+    const std::deque<std::string>& getLines() const {
+        return lines;
+    }
+    
+    void clear() {
+        lines.clear();
+    }
+};
+
+// Global console capture instance
+ConsoleCapture consoleCapture;
+
+// --- Simple INI parser ---
+std::unordered_map<std::string, std::string> parseINI(const std::string& filepath) {
+    std::unordered_map<std::string, std::string> result;
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::string errorMsg = "Failed to open " + filepath;
+        std::cerr << errorMsg << "\n";
+        consoleCapture.addLine(errorMsg);
+        return result;
+    }
+    std::string line;
+    while (std::getline(file, line)) {
+        // Remove whitespace
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        
+        // Skip comments and empty lines
+        if (line.empty() || line[0] == '#') continue;
+        
+        // Split at '='
+        size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        
+        std::string key = line.substr(0, eq);
+        std::string value = line.substr(eq + 1);
+        
+        // Trim whitespace and quotes
+        key.erase(0, key.find_first_not_of(" \t\r\n"));
+        key.erase(key.find_last_not_of(" \t\r\n") + 1);
+        value.erase(0, value.find_first_not_of(" \t\r\n\""));
+        value.erase(value.find_last_not_of(" \t\r\n\"") + 1);
+        
+        result[key] = value;
+    }
+    return result;
+}
+
+// --- Texture loading with fallback ---
+Texture2D LoadPlayerTexture(const std::string& path) {
+    Texture2D texture = LoadTexture(path.c_str());
+    if (texture.id == 0) {
+        // Create a simple colored rectangle as fallback
+        Image img = GenImageColor(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, RED);
+        texture = LoadTextureFromImage(img);
+        UnloadImage(img);
+        consoleCapture.addLine("Using fallback texture - failed to load: " + path);
+    } else {
+        consoleCapture.addLine("Player texture loaded successfully (" + path + ")");
+    }
+    return texture;
+}
+
+// --- Console rendering function ---
+void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize) {
+    // Console box dimensions (cached calculations)
+    static int consoleX = 10;
+    static int consoleY = showFPS ? 40 : 10;
+    static int titleFontSize = consoleFontSize + 2;
+    static int textFontSize = consoleFontSize;
+    static int lineHeight = textFontSize + CONSOLE_LINE_SPACING;
+    static int padding = consoleFontSize / 2;
+    
+    // Update consoleY if showFPS changed
+    consoleY = showFPS ? 40 : 10;
+    
+    // Draw console background
+    DrawRectangle(consoleX, consoleY, consoleWidth, consoleHeight, Fade(BLACK, CONSOLE_BACKGROUND_ALPHA));
+    DrawRectangleLines(consoleX, consoleY, consoleWidth, consoleHeight, WHITE);
+    
+    // Draw console title
+    DrawText("Console Output:", consoleX + padding, consoleY + padding, titleFontSize, WHITE);
+    
+    // Calculate available space for text lines
+    int titleHeight = titleFontSize + padding;
+    int availableHeight = consoleHeight - titleHeight - padding;
+    int maxDisplayLines = availableHeight / lineHeight;
+    
+    // Draw console lines
+    const auto& lines = consoleCapture.getLines();
+    int startY = consoleY + titleHeight;
+    
+    // Calculate how many lines to show
+    int linesToShow = std::min(static_cast<int>(lines.size()), maxDisplayLines);
+    int startIndex = std::max(0, static_cast<int>(lines.size()) - linesToShow);
+    
+    // Loop through each line we can display
+    for (int i = 0; i < linesToShow; i++) {
+        int lineIndex = startIndex + i;
+        int textY = startY + (i * lineHeight);
+        
+        DrawText(lines[lineIndex].c_str(), consoleX + padding, textY, textFontSize, LIGHTGRAY);
+    }
+}
+
+// --- Pause screen rendering function ---
+void DrawPauseScreen(int screenWidth, int screenHeight) {
+    // Semi-transparent overlay
+    DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, PAUSE_OVERLAY_ALPHA));
+    
+    // Pause menu box - centered using the formula
+    int pauseBoxX = (screenWidth - PAUSE_BOX_WIDTH) / 2;
+    int pauseBoxY = (screenHeight - PAUSE_BOX_HEIGHT) / 2;
+    
+    // Draw pause menu background
+    DrawRectangle(pauseBoxX, pauseBoxY, PAUSE_BOX_WIDTH, PAUSE_BOX_HEIGHT, BLACK);
+    DrawRectangleLines(pauseBoxX, pauseBoxY, PAUSE_BOX_WIDTH, PAUSE_BOX_HEIGHT, WHITE);
+    
+    // Draw pause text - centered within the pause box
+    const int titleFontSize = 24;
+    const int instructionFontSize = 16;
+    
+    // Calculate text centering within the pause box
+    const char* titleText = "GAME PAUSED";
+    const char* resumeText = "Press ESC to resume";
+    const char* quitText = "Press Q to quit";
+    
+    // Center the title text horizontally within the pause box
+    int titleWidth = MeasureText(titleText, titleFontSize);
+    int titleX = pauseBoxX + (PAUSE_BOX_WIDTH - titleWidth) / 2;
+    
+    // Center the instruction texts horizontally within the pause box
+    int resumeWidth = MeasureText(resumeText, instructionFontSize);
+    int resumeX = pauseBoxX + (PAUSE_BOX_WIDTH - resumeWidth) / 2;
+    
+    int quitWidth = MeasureText(quitText, instructionFontSize);
+    int quitX = pauseBoxX + (PAUSE_BOX_WIDTH - quitWidth) / 2;
+    
+    // Draw centered text
+    DrawText(titleText, titleX, pauseBoxY + 30, titleFontSize, WHITE);
+    DrawText(resumeText, resumeX, pauseBoxY + 70, instructionFontSize, LIGHTGRAY);
+    DrawText(quitText, quitX, pauseBoxY + 95, instructionFontSize, LIGHTGRAY);
+}
+
+int main()
+{
+    // --- Load config file ---
+    auto conf = parseINI("resources/conf.ini");
+    
+    // Default values
+    int screenWidth = 800;
+    int screenHeight = 450;
+    float playerSpeed = 200.0f;
+    float friction = 10.0f;
+    float maxSpeed = 200.0f;
+    bool showFPS = false;
+    bool consoleEnabled = false;
+    bool consoleVisible = false;
+    bool isPaused = false;
+    bool shouldQuit = false;
+    int consoleFontSize = 14;
+    int consoleWidth = 450;
+    int consoleHeight = 280;
+    std::string spritePath = "resources/test/testsprite.png";
+    
+    // Override with config values
+    if (conf.count("window_width")) screenWidth = std::stoi(conf["window_width"]);
+    if (conf.count("window_height")) screenHeight = std::stoi(conf["window_height"]);
+    if (conf.count("player_speed")) playerSpeed = std::stof(conf["player_speed"]);
+    if (conf.count("player_friction")) friction = std::stof(conf["player_friction"]);
+    if (conf.count("player_max_speed")) maxSpeed = std::stof(conf["player_max_speed"]);
+    if (conf.count("show_fps")) {
+        std::string fpsValue = conf["show_fps"];
+        showFPS = (fpsValue == "true" || fpsValue == "1" || fpsValue == "yes");
+    }
+    if (conf.count("show_console")) {
+        std::string consoleValue = conf["show_console"];
+        consoleEnabled = (consoleValue == "true" || consoleValue == "1" || consoleValue == "yes");
+    }
+    if (conf.count("console_font_size")) consoleFontSize = std::stoi(conf["console_font_size"]);
+    if (conf.count("console_width")) consoleWidth = std::stoi(conf["console_width"]);
+    if (conf.count("console_height")) consoleHeight = std::stoi(conf["console_height"]);
+    if (conf.count("player_sprite")) spritePath = conf["player_sprite"];
+
+    // Calculate max display chars for console truncation
+    int estimatedCharWidth = static_cast<int>(consoleFontSize * 0.6f);
+    int padding = consoleFontSize / 2;
+    int maxChars = (consoleWidth - (padding * 2)) / estimatedCharWidth;
+    consoleCapture.setMaxDisplayChars(maxChars);
+
+    InitWindow(screenWidth, screenHeight, "Abandoned Where? (TESTING MODE)");
+    SetExitKey(KEY_NULL); // Disable default exit key (ESC) to handle it manually
+    
+    // Add some example console messages
+    consoleCapture.addLine("Game started successfully");
+    consoleCapture.addLine("Config loaded successfully (resources/conf.ini)");
+    
+    // Load texture from config path with fallback
+    Texture2D player = LoadPlayerTexture(spritePath);
+    
+    Vector2 playerPos = { 
+        static_cast<float>(screenWidth) / 2.0f - static_cast<float>(player.width) / 2.0f,
+        static_cast<float>(screenHeight) / 2.0f - static_cast<float>(player.height) / 2.0f 
+    };
+    Vector2 velocity = { 0.0f, 0.0f };
+    float acceleration = playerSpeed * 25.0f;
+    
+    SetTargetFPS(60);
+    
+    while (!WindowShouldClose() && !shouldQuit)
+    {
+        float dt = GetFrameTime();
+        
+        // --- Console toggle (grave/tilde key) ---
+        if (consoleEnabled && IsKeyPressed(KEY_GRAVE)) {
+            consoleVisible = !consoleVisible;
+        }
+        
+        // --- Pause toggle (ESC key) ---
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            isPaused = !isPaused;
+        }
+        
+        // --- Quit from pause screen ---
+        if (isPaused && IsKeyPressed(KEY_Q)) {
+            shouldQuit = true;
+        }
+        
+        // Only update game logic if not paused
+        if (!isPaused) {
+            // --- Input ---
+            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) velocity.x += acceleration * dt;
+            if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) velocity.x -= acceleration * dt;
+            if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) velocity.y += acceleration * dt;
+            if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) velocity.y -= acceleration * dt;
+            
+            // --- Friction ---
+            velocity.x -= velocity.x * friction * dt;
+            velocity.y -= velocity.y * friction * dt;
+            
+            // --- Clamp speed ---
+            if (velocity.x > maxSpeed) velocity.x = maxSpeed;
+            if (velocity.x < -maxSpeed) velocity.x = -maxSpeed;
+            if (velocity.y > maxSpeed) velocity.y = maxSpeed;
+            if (velocity.y < -maxSpeed) velocity.y = -maxSpeed;
+            
+            // --- Update position ---
+            playerPos.x += velocity.x * dt;
+            playerPos.y += velocity.y * dt;
+            
+            // --- Keep inside screen ---
+            float playerWidth = static_cast<float>(player.width);
+            float playerHeight = static_cast<float>(player.height);
+            float screenWidthF = static_cast<float>(screenWidth);
+            float screenHeightF = static_cast<float>(screenHeight);
+            
+            if (playerPos.x < 0) playerPos.x = 0;
+            if (playerPos.y < 0) playerPos.y = 0;
+            if (playerPos.x > screenWidthF - playerWidth) playerPos.x = screenWidthF - playerWidth;
+            if (playerPos.y > screenHeightF - playerHeight) playerPos.y = screenHeightF - playerHeight;
+        }
+        
+        // --- Draw ---
+        BeginDrawing();
+        ClearBackground(GRAY);
+        DrawTexture(player, static_cast<int>(playerPos.x), static_cast<int>(playerPos.y), WHITE);
+        
+        // --- Draw FPS if enabled ---
+        if (showFPS) {
+            DrawFPS(10, 10);
+        }
+        
+        // --- Draw Console if enabled and visible ---
+        if (consoleEnabled && consoleVisible) {
+            DrawConsole(showFPS, consoleWidth, consoleHeight, consoleFontSize);
+        }
+        
+        // --- Draw Pause Screen ---
+        if (isPaused) {
+            DrawPauseScreen(screenWidth, screenHeight);
+        }
+        
+        EndDrawing();
+    }
+    
+    UnloadTexture(player);
+    CloseWindow();
+    return 0;
+}
