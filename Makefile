@@ -132,7 +132,7 @@ $(OBJ_DIR)/main.o: main.cpp ConsoleCapture.h ConfigParser.h TextureLoader.h UIRe
 $(OBJ_DIR)/ConsoleCapture.o: ConsoleCapture.cpp ConsoleCapture.h
 $(OBJ_DIR)/ConfigParser.o: ConfigParser.cpp ConfigParser.h ConsoleCapture.h
 $(OBJ_DIR)/TextureLoader.o: TextureLoader.cpp TextureLoader.h ConsoleCapture.h
-$(OBJ_DIR)/UIRenderer.o: UIRenderer.cpp UIRenderer.h ConsoleCapture.h
+$(OBJ_DIR)/UIRenderer.o: UIRenderer.cpp UIRenderer.h ConsoleCapture.h Version.h
 $(OBJ_DIR)/Player.o: Player.cpp Player.h
 $(OBJ_DIR)/GameConfig.o: GameConfig.cpp GameConfig.h
 $(OBJ_DIR)/GameState.o: GameState.cpp GameState.h

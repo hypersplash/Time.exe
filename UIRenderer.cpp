@@ -1,5 +1,6 @@
 #include "UIRenderer.h"
 #include "ConsoleCapture.h"
+#include "Version.h"
 #include "raylib.h"
 #include <algorithm>
 #include <cmath>
@@ -127,11 +128,12 @@ void DrawTitleScreen(int screenWidth, int screenHeight) {
     // Redraw start instruction with pulsing effect
     DrawText(startInstruction, startX, startY, instructionFontSize, pulseColor);
     
-    // Add a simple version text in the corner
-    constexpr const char* versionText = "v0.1 - Development Build";
+    // Add version text in the bottom right corner
     constexpr int versionFontSize = 16;
-    const int versionY = screenHeight - versionFontSize - 10;
-    DrawText(versionText, 10, versionY, versionFontSize, DARKGRAY);
+    const int versionWidth = MeasureText(VERSION_SHORT, versionFontSize);
+    const int versionX = screenWidth - versionWidth - 10;  // 10px margin from right
+    const int versionY = screenHeight - versionFontSize - 10;  // 10px margin from bottom
+    DrawText(VERSION_SHORT, versionX, versionY, versionFontSize, DARKGRAY);
 }
 
 void DrawPauseScreen(int screenWidth, int screenHeight) {
