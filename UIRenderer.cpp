@@ -133,7 +133,7 @@ void DrawTitleScreen(int screenWidth, int screenHeight) {
     const int versionWidth = MeasureText(VERSION_SHORT, versionFontSize);
     const int versionX = screenWidth - versionWidth - 10;  // 10px margin from right
     const int versionY = screenHeight - versionFontSize - 10;  // 10px margin from bottom
-    DrawText(VERSION_SHORT, versionX, versionY, versionFontSize, DARKGRAY);
+    DrawText(VERSION_SHORT, versionX, versionY, versionFontSize, BLACK);
 }
 
 void DrawPauseScreen(int screenWidth, int screenHeight) {
