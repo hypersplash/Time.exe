@@ -1,7 +1,7 @@
 # ============================================================================
 # PROJECT CONFIGURATION
 # ============================================================================
-TARGET = abadonedwhere
+TARGET = abandonedwhere
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -DNDEBUG -march=native -flto
 
