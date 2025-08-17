@@ -5,32 +5,9 @@
 #include "UIRenderer.h"
 #include "Player.h"
 #include "GameConfig.h"
+#include "GameState.h"
 
 namespace {
-    // Game state management
-    struct GameState {
-        bool consoleVisible = false;
-        bool isPaused = false;
-        bool shouldQuit = false;
-        
-        void handleInput(bool consoleEnabled) {
-            // Console toggle (grave/tilde key)
-            if (consoleEnabled && IsKeyPressed(KEY_GRAVE)) {
-                consoleVisible = !consoleVisible;
-            }
-            
-            // Pause toggle (ESC key)
-            if (IsKeyPressed(KEY_ESCAPE)) {
-                isPaused = !isPaused;
-            }
-            
-            // Quit from pause screen
-            if (isPaused && IsKeyPressed(KEY_Q)) {
-                shouldQuit = true;
-            }
-        }
-    };
-    
     void initializeConsole() {
         consoleCapture.addLine("Game started successfully");
         consoleCapture.addLine("Config loaded successfully (resources/conf.ini)");
@@ -46,27 +23,48 @@ namespace {
                      config.friction, config.maxSpeed, texture);
     }
     
-    void renderGame(const Player& player, const GameConfig& config, const GameState& state) {
+    void updateGame(Player& player, GameState& gameState, const GameConfig& config, float deltaTime) {
+        // Handle input based on current state
+        if (gameState.isOnTitleScreen()) {
+            gameState.handleTitleInput();
+        } else {
+            gameState.handleGameInput(config.consoleEnabled);
+            
+            // Update player only when actually playing (not paused)
+            if (gameState.isInGame()) {
+                player.update(deltaTime, config.screenWidth, config.screenHeight);
+            }
+        }
+    }
+    
+    void renderGame(const Player& player, const GameConfig& config, const GameState& gameState) {
         BeginDrawing();
-        ClearBackground(GRAY);
         
-        // Draw player
-        player.draw();
-        
-        // Draw FPS if enabled
-        if (config.showFPS) {
-            DrawFPS(10, 10);
-        }
-        
-        // Draw console if enabled and visible
-        if (config.consoleEnabled && state.consoleVisible) {
-            DrawConsole(config.showFPS, config.consoleWidth, 
-                       config.consoleHeight, config.consoleFontSize);
-        }
-        
-        // Draw pause screen
-        if (state.isPaused) {
-            DrawPauseScreen(config.screenWidth, config.screenHeight);
+        if (gameState.isOnTitleScreen()) {
+            // Render title screen
+            DrawTitleScreen(config.screenWidth, config.screenHeight);
+        } else {
+            // Render game world
+            ClearBackground(GRAY);
+            
+            // Draw player
+            player.draw();
+            
+            // Draw FPS if enabled
+            if (config.showFPS) {
+                DrawFPS(10, 10);
+            }
+            
+            // Draw console if enabled and visible
+            if (config.consoleEnabled && gameState.consoleVisible) {
+                DrawConsole(config.showFPS, config.consoleWidth, 
+                           config.consoleHeight, config.consoleFontSize);
+            }
+            
+            // Draw pause screen
+            if (gameState.isPaused()) {
+                DrawPauseScreen(config.screenWidth, config.screenHeight);
+            }
         }
         
         EndDrawing();
@@ -83,7 +81,7 @@ int main() {
     consoleCapture.setMaxDisplayChars(config.calculateMaxDisplayChars());
     
     // Initialize window and disable default exit key
-    InitWindow(config.screenWidth, config.screenHeight, "Abandoned Where? (TESTING MODE)");
+    InitWindow(config.screenWidth, config.screenHeight, "Abandoned Where?");
     SetExitKey(KEY_NULL);
     SetTargetFPS(60);
     
@@ -92,19 +90,14 @@ int main() {
     
     const Texture2D playerTexture = LoadPlayerTexture(config.spritePath);
     Player player = createPlayer(config, playerTexture);
-    GameState gameState;
+    GameState gameState;  // Starts in TITLE_SCREEN state
     
     // Main game loop
     while (!WindowShouldClose() && !gameState.shouldQuit) {
         const float deltaTime = GetFrameTime();
         
-        // Handle input
-        gameState.handleInput(config.consoleEnabled);
-        
-        // Update game logic only when not paused
-        if (!gameState.isPaused) {
-            player.update(deltaTime, config.screenWidth, config.screenHeight);
-        }
+        // Update game state and logic
+        updateGame(player, gameState, config, deltaTime);
         
         // Render everything
         renderGame(player, config, gameState);

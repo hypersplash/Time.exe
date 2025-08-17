@@ -1,7 +1,7 @@
 # ============================================================================
 # PROJECT CONFIGURATION
 # ============================================================================
-TARGET = abandonedwhere
+TARGET = abadonedwhere
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -DNDEBUG -march=native -flto
 
@@ -40,7 +40,8 @@ SOURCES = main.cpp \
           TextureLoader.cpp \
           UIRenderer.cpp \
           Player.cpp \
-          GameConfig.cpp
+          GameConfig.cpp \
+          GameState.cpp
 
 OBJECTS = $(SOURCES:%.cpp=$(OBJ_DIR)/%.o)
 EXECUTABLE = $(BIN_DIR)/$(TARGET)
@@ -127,10 +128,11 @@ help:
 # ============================================================================
 # EXPLICIT DEPENDENCIES (for reference)
 # ============================================================================
-$(OBJ_DIR)/main.o: main.cpp ConsoleCapture.h ConfigParser.h TextureLoader.h UIRenderer.h Player.h GameConfig.h
+$(OBJ_DIR)/main.o: main.cpp ConsoleCapture.h ConfigParser.h TextureLoader.h UIRenderer.h Player.h GameConfig.h GameState.h
 $(OBJ_DIR)/ConsoleCapture.o: ConsoleCapture.cpp ConsoleCapture.h
 $(OBJ_DIR)/ConfigParser.o: ConfigParser.cpp ConfigParser.h ConsoleCapture.h
 $(OBJ_DIR)/TextureLoader.o: TextureLoader.cpp TextureLoader.h ConsoleCapture.h
 $(OBJ_DIR)/UIRenderer.o: UIRenderer.cpp UIRenderer.h ConsoleCapture.h
 $(OBJ_DIR)/Player.o: Player.cpp Player.h
 $(OBJ_DIR)/GameConfig.o: GameConfig.cpp GameConfig.h
+$(OBJ_DIR)/GameState.o: GameState.cpp GameState.h
