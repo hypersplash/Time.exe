@@ -8,15 +8,19 @@ class ConsoleCapture {
 private:
     std::deque<std::string> lines;
     static const int MAX_LINES = 15;
-    int maxDisplayChars = 50; // Will be updated based on console width
+    int maxDisplayChars = 50;
     
 public:
-    ConsoleCapture();
+    ConsoleCapture() = default;
     
     void setMaxDisplayChars(int maxChars);
     void addLine(const std::string& line);
-    const std::deque<std::string>& getLines() const;
-    void clear();
+    const std::deque<std::string>& getLines() const { return lines; }
+    void clear() { lines.clear(); }
+    
+private:
+    // Helper to avoid redundant string operations
+    void addTruncatedLine(const std::string& line);
 };
 
 // Global console capture instance

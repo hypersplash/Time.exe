@@ -3,44 +3,76 @@
 #include "raylib.h"
 #include <algorithm>
 
+// Global console layout cache
+static ConsoleLayout consoleLayout;
+
+void ConsoleLayout::update(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize) {
+    x = 10;
+    y = showFPS ? 40 : 10;
+    width = consoleWidth;
+    height = consoleHeight;
+    
+    titleFontSize = consoleFontSize + 2;
+    textFontSize = consoleFontSize;
+    lineHeight = textFontSize + CONSOLE_LINE_SPACING;
+    padding = consoleFontSize / 2;
+    
+    titleHeight = titleFontSize + padding;
+    availableHeight = height - titleHeight - padding;
+    maxDisplayLines = std::max(1, availableHeight / lineHeight);
+    
+    // Cache current parameters
+    lastShowFPS = showFPS;
+    lastWidth = consoleWidth;
+    lastHeight = consoleHeight;
+    lastFontSize = consoleFontSize;
+    needsUpdate = false;
+}
+
+bool ConsoleLayout::shouldUpdate(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize) const {
+    return needsUpdate || 
+           lastShowFPS != showFPS || 
+           lastWidth != consoleWidth || 
+           lastHeight != consoleHeight || 
+           lastFontSize != consoleFontSize;
+}
+
 void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize) {
-    // Console box dimensions (cached calculations)
-    static int consoleX = 10;
-    static int consoleY = showFPS ? 40 : 10;
-    static int titleFontSize = consoleFontSize + 2;
-    static int textFontSize = consoleFontSize;
-    static int lineHeight = textFontSize + CONSOLE_LINE_SPACING;
-    static int padding = consoleFontSize / 2;
+    // Only recalculate layout when parameters change
+    if (consoleLayout.shouldUpdate(showFPS, consoleWidth, consoleHeight, consoleFontSize)) {
+        consoleLayout.update(showFPS, consoleWidth, consoleHeight, consoleFontSize);
+    }
     
-    // Update consoleY if showFPS changed
-    consoleY = showFPS ? 40 : 10;
+    const auto& layout = consoleLayout;
     
-    // Draw console background
-    DrawRectangle(consoleX, consoleY, consoleWidth, consoleHeight, Fade(BLACK, CONSOLE_BACKGROUND_ALPHA));
-    DrawRectangleLines(consoleX, consoleY, consoleWidth, consoleHeight, WHITE);
+    // Draw console background and border
+    DrawRectangle(layout.x, layout.y, layout.width, layout.height, 
+                  Fade(BLACK, CONSOLE_BACKGROUND_ALPHA));
+    DrawRectangleLines(layout.x, layout.y, layout.width, layout.height, WHITE);
     
     // Draw console title
-    DrawText("Console Output:", consoleX + padding, consoleY + padding, titleFontSize, WHITE);
-    
-    // Calculate available space for text lines
-    int titleHeight = titleFontSize + padding;
-    int availableHeight = consoleHeight - titleHeight - padding;
-    int maxDisplayLines = availableHeight / lineHeight;
+    DrawText("Console Output:", 
+             layout.x + layout.padding, 
+             layout.y + layout.padding, 
+             layout.titleFontSize, WHITE);
     
     // Draw console lines
     const auto& lines = consoleCapture.getLines();
-    int startY = consoleY + titleHeight;
+    if (lines.empty()) return;  // Early exit if no lines
     
-    // Calculate how many lines to show
-    int linesToShow = std::min(static_cast<int>(lines.size()), maxDisplayLines);
-    int startIndex = std::max(0, static_cast<int>(lines.size()) - linesToShow);
+    const int startY = layout.y + layout.titleHeight;
+    const int linesToShow = std::min(static_cast<int>(lines.size()), layout.maxDisplayLines);
+    const int startIndex = std::max(0, static_cast<int>(lines.size()) - linesToShow);
     
-    // Loop through each line we can display
-    for (int i = 0; i < linesToShow; i++) {
-        int lineIndex = startIndex + i;
-        int textY = startY + (i * lineHeight);
+    // Render lines efficiently
+    for (int i = 0; i < linesToShow; ++i) {
+        const int lineIndex = startIndex + i;
+        const int textY = startY + (i * layout.lineHeight);
         
-        DrawText(lines[lineIndex].c_str(), consoleX + padding, textY, textFontSize, LIGHTGRAY);
+        DrawText(lines[lineIndex].c_str(), 
+                 layout.x + layout.padding, 
+                 textY, 
+                 layout.textFontSize, LIGHTGRAY);
     }
 }
 
@@ -48,33 +80,30 @@ void DrawPauseScreen(int screenWidth, int screenHeight) {
     // Semi-transparent overlay
     DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, PAUSE_OVERLAY_ALPHA));
     
-    // Pause menu box - centered using the formula
-    int pauseBoxX = (screenWidth - PAUSE_BOX_WIDTH) / 2;
-    int pauseBoxY = (screenHeight - PAUSE_BOX_HEIGHT) / 2;
+    // Calculate centered pause box position
+    const int pauseBoxX = (screenWidth - PAUSE_BOX_WIDTH) / 2;
+    const int pauseBoxY = (screenHeight - PAUSE_BOX_HEIGHT) / 2;
     
-    // Draw pause menu background
+    // Draw pause menu background and border
     DrawRectangle(pauseBoxX, pauseBoxY, PAUSE_BOX_WIDTH, PAUSE_BOX_HEIGHT, BLACK);
     DrawRectangleLines(pauseBoxX, pauseBoxY, PAUSE_BOX_WIDTH, PAUSE_BOX_HEIGHT, WHITE);
     
-    // Draw pause text - centered within the pause box
-    const int titleFontSize = 24;
-    const int instructionFontSize = 16;
+    // Text configuration
+    constexpr int titleFontSize = 24;
+    constexpr int instructionFontSize = 16;
+    constexpr const char* titleText = "GAME PAUSED";
+    constexpr const char* resumeText = "Press ESC to resume";
+    constexpr const char* quitText = "Press Q to quit";
     
-    // Calculate text centering within the pause box
-    const char* titleText = "GAME PAUSED";
-    const char* resumeText = "Press ESC to resume";
-    const char* quitText = "Press Q to quit";
+    // Calculate centered text positions
+    const int titleWidth = MeasureText(titleText, titleFontSize);
+    const int titleX = pauseBoxX + (PAUSE_BOX_WIDTH - titleWidth) / 2;
     
-    // Center the title text horizontally within the pause box
-    int titleWidth = MeasureText(titleText, titleFontSize);
-    int titleX = pauseBoxX + (PAUSE_BOX_WIDTH - titleWidth) / 2;
+    const int resumeWidth = MeasureText(resumeText, instructionFontSize);
+    const int resumeX = pauseBoxX + (PAUSE_BOX_WIDTH - resumeWidth) / 2;
     
-    // Center the instruction texts horizontally within the pause box
-    int resumeWidth = MeasureText(resumeText, instructionFontSize);
-    int resumeX = pauseBoxX + (PAUSE_BOX_WIDTH - resumeWidth) / 2;
-    
-    int quitWidth = MeasureText(quitText, instructionFontSize);
-    int quitX = pauseBoxX + (PAUSE_BOX_WIDTH - quitWidth) / 2;
+    const int quitWidth = MeasureText(quitText, instructionFontSize);
+    const int quitX = pauseBoxX + (PAUSE_BOX_WIDTH - quitWidth) / 2;
     
     // Draw centered text
     DrawText(titleText, titleX, pauseBoxY + 30, titleFontSize, WHITE);

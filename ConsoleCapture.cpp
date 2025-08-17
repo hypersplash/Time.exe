@@ -3,29 +3,28 @@
 // Global console capture instance
 ConsoleCapture consoleCapture;
 
-ConsoleCapture::ConsoleCapture() {
-    // deque doesn't need reserve() - it manages memory efficiently
-}
-
 void ConsoleCapture::setMaxDisplayChars(int maxChars) {
     maxDisplayChars = maxChars;
 }
 
 void ConsoleCapture::addLine(const std::string& line) {
-    std::string truncated = line;
-    if (truncated.length() > static_cast<size_t>(maxDisplayChars)) {
-        truncated = truncated.substr(0, maxDisplayChars - 3) + "...";
+    // Only truncate if necessary - avoid unnecessary string operations
+    if (line.length() > static_cast<size_t>(maxDisplayChars)) {
+        addTruncatedLine(line);
+    } else {
+        lines.emplace_back(line);  // Direct construction, no extra copies
     }
-    lines.push_back(truncated);
+    
+    // Maintain maximum line count
     if (lines.size() > MAX_LINES) {
         lines.pop_front();
     }
 }
 
-const std::deque<std::string>& ConsoleCapture::getLines() const {
-    return lines;
-}
-
-void ConsoleCapture::clear() {
-    lines.clear();
+void ConsoleCapture::addTruncatedLine(const std::string& line) {
+    // Reserve space to avoid reallocation during concatenation
+    std::string truncated;
+    truncated.reserve(maxDisplayChars);
+    truncated = line.substr(0, maxDisplayChars - 3) + "...";
+    lines.emplace_back(std::move(truncated));
 }

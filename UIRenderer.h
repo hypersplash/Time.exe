@@ -2,13 +2,30 @@
 #define UI_RENDERER_H
 
 // Constants for UI rendering
-const float PAUSE_OVERLAY_ALPHA = 0.6f;
-const float CONSOLE_BACKGROUND_ALPHA = 0.8f;
-const int PAUSE_BOX_WIDTH = 300;
-const int PAUSE_BOX_HEIGHT = 150;
-const int CONSOLE_LINE_SPACING = 4;
+constexpr float PAUSE_OVERLAY_ALPHA = 0.6f;
+constexpr float CONSOLE_BACKGROUND_ALPHA = 0.8f;
+constexpr int PAUSE_BOX_WIDTH = 300;
+constexpr int PAUSE_BOX_HEIGHT = 150;
+constexpr int CONSOLE_LINE_SPACING = 4;
 
-// Console rendering function
+// Cached console layout for performance
+struct ConsoleLayout {
+    int x, y, width, height;
+    int titleFontSize, textFontSize;
+    int lineHeight, padding;
+    int titleHeight, availableHeight;
+    int maxDisplayLines;
+    bool needsUpdate = true;
+    
+    void update(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize);
+    bool shouldUpdate(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize) const;
+    
+private:
+    bool lastShowFPS = false;
+    int lastWidth = 0, lastHeight = 0, lastFontSize = 0;
+};
+
+// Console rendering function with cached layout
 void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize);
 
 // Pause screen rendering function

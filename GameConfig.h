@@ -29,6 +29,15 @@ struct GameConfig {
     
     // Calculate max display characters for console
     int calculateMaxDisplayChars() const;
+
+private:
+    // Helper templates for type-safe config parsing
+    template<typename T>
+    void setConfigValue(const std::unordered_map<std::string, std::string>& config, 
+                       const std::string& key, T& target);
+    
+    void setBoolConfig(const std::unordered_map<std::string, std::string>& config,
+                      const std::string& key, bool& target);
 };
 
 #endif // GAME_CONFIG_H

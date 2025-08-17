@@ -2,39 +2,79 @@
 #include "ConsoleCapture.h"
 #include <fstream>
 #include <iostream>
+#include <algorithm>
+
+namespace {
+    // Helper function to trim whitespace (more efficient than repeated find operations)
+    void trimWhitespace(std::string& str) {
+        // Trim leading whitespace
+        str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+        
+        // Trim trailing whitespace
+        str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), str.end());
+    }
+    
+    // Helper to trim quotes from config values
+    void trimQuotes(std::string& str) {
+        if (!str.empty() && (str.front() == '"' || str.front() == '\'')) {
+            str.erase(0, 1);
+        }
+        if (!str.empty() && (str.back() == '"' || str.back() == '\'')) {
+            str.pop_back();
+        }
+    }
+    
+    // Check if line should be skipped (empty or comment)
+    bool shouldSkipLine(const std::string& line) {
+        return line.empty() || line[0] == '#';
+    }
+}
 
 std::unordered_map<std::string, std::string> parseINI(const std::string& filepath) {
     std::unordered_map<std::string, std::string> result;
+    
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        std::string errorMsg = "Failed to open " + filepath;
-        std::cerr << errorMsg << "\n";
+        const std::string errorMsg = "Failed to open " + filepath;
+        std::cerr << errorMsg << '\n';
         consoleCapture.addLine(errorMsg);
         return result;
     }
+    
     std::string line;
+    line.reserve(256);  // Reserve space to reduce allocations
+    
     while (std::getline(file, line)) {
-        // Remove whitespace
-        line.erase(0, line.find_first_not_of(" \t\r\n"));
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        trimWhitespace(line);
         
-        // Skip comments and empty lines
-        if (line.empty() || line[0] == '#') continue;
+        if (shouldSkipLine(line)) {
+            continue;
+        }
         
-        // Split at '='
-        size_t eq = line.find('=');
-        if (eq == std::string::npos) continue;
+        // Find the key-value separator
+        const size_t equalPos = line.find('=');
+        if (equalPos == std::string::npos) {
+            continue;  // Skip malformed lines
+        }
         
-        std::string key = line.substr(0, eq);
-        std::string value = line.substr(eq + 1);
+        // Extract key and value
+        std::string key = line.substr(0, equalPos);
+        std::string value = line.substr(equalPos + 1);
         
-        // Trim whitespace and quotes
-        key.erase(0, key.find_first_not_of(" \t\r\n"));
-        key.erase(key.find_last_not_of(" \t\r\n") + 1);
-        value.erase(0, value.find_first_not_of(" \t\r\n\""));
-        value.erase(value.find_last_not_of(" \t\r\n\"") + 1);
+        // Trim and clean key and value
+        trimWhitespace(key);
+        trimWhitespace(value);
+        trimQuotes(value);
         
-        result[key] = value;
+        // Only add non-empty keys
+        if (!key.empty()) {
+            result.emplace(std::move(key), std::move(value));
+        }
     }
+    
     return result;
 }
