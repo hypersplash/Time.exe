@@ -16,14 +16,13 @@ bool ScreenBounds::needsUpdate(int screenWidth, int screenHeight) const {
 // Player implementation
 Player::Player(float x, float y, float playerSpeed, float playerFriction, 
                float playerMaxSpeed, Texture2D playerTexture) 
-    : position{x, y}, velocity{0.0f, 0.0f}, speed(playerSpeed), 
-      friction(playerFriction), maxSpeed(playerMaxSpeed), texture(playerTexture) {
-    
-    // Pre-calculate acceleration once
-    acceleration = speed * 25.0f;
+    : position{x, y}, velocity{0.0f, 0.0f}, speed(playerSpeed), baseSpeed(playerSpeed), 
+      friction(playerFriction), maxSpeed(playerMaxSpeed), baseMaxSpeed(playerMaxSpeed), texture(playerTexture) {
 }
 
-void Player::handleInput(float deltaTime) {
+void Player::handleInput(float deltaTime, bool consoleActive) {
+    if (consoleActive) return;
+    acceleration = speed * 25.0f;
     const float accelDelta = acceleration * deltaTime;
     
     // Handle input with early returns for better branch prediction
@@ -33,8 +32,8 @@ void Player::handleInput(float deltaTime) {
     if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))    velocity.y -= accelDelta;
 }
 
-void Player::update(float deltaTime, int screenWidth, int screenHeight) {
-    handleInput(deltaTime);
+void Player::update(float deltaTime, int screenWidth, int screenHeight, bool consoleActive) {
+    handleInput(deltaTime, consoleActive);
     applyPhysics(deltaTime);
     clampToScreen(screenWidth, screenHeight);
 }

@@ -39,7 +39,7 @@ bool ConsoleLayout::shouldUpdate(bool showFPS, int consoleWidth, int consoleHeig
            lastFontSize != consoleFontSize;
 }
 
-void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize) {
+void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize, const ConsoleInput& consoleInput) {
     // Only recalculate layout when parameters change
     if (consoleLayout.shouldUpdate(showFPS, consoleWidth, consoleHeight, consoleFontSize)) {
         consoleLayout.update(showFPS, consoleWidth, consoleHeight, consoleFontSize);
@@ -75,6 +75,25 @@ void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleF
                  layout.x + layout.padding, 
                  textY, 
                  layout.textFontSize, LIGHTGRAY);
+    }
+    DrawConsoleInputBox(layout, consoleInput);
+}
+
+void DrawConsoleInputBox(const ConsoleLayout& layout, const ConsoleInput& consoleInput) {
+    const int inputBoxHeight = layout.textFontSize + layout.padding * 2;
+    const int inputBoxY = layout.y + layout.height - inputBoxHeight;
+
+    DrawRectangle(layout.x, inputBoxY, layout.width, inputBoxHeight, Fade(BLACK, 0.5f));
+    DrawRectangleLines(layout.x, inputBoxY, layout.width, inputBoxHeight, WHITE);
+
+    const int textX = layout.x + layout.padding;
+    const int textY = inputBoxY + layout.padding;
+
+    DrawText(consoleInput.text.c_str(), textX, textY, layout.textFontSize, WHITE);
+
+    if (consoleInput.active) {
+        const int cursorX = textX + MeasureText(consoleInput.text.substr(0, consoleInput.cursorPosition).c_str(), layout.textFontSize);
+        DrawLine(cursorX, textY, cursorX, textY + layout.textFontSize, WHITE);
     }
 }
 

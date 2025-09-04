@@ -17,8 +17,10 @@ struct Player {
     Vector2 position;
     Vector2 velocity;
     float speed;
+    float baseSpeed;
     float friction;
     float maxSpeed;
+    float baseMaxSpeed;
     float acceleration;
     Texture2D texture;
     
@@ -28,8 +30,8 @@ struct Player {
     Player(float x, float y, float playerSpeed, float playerFriction, 
            float playerMaxSpeed, Texture2D playerTexture);
     
-    void update(float deltaTime, int screenWidth, int screenHeight);
-    void handleInput(float deltaTime);
+    void update(float deltaTime, int screenWidth, int screenHeight, bool consoleActive);
+    void handleInput(float deltaTime, bool consoleActive);
     void draw() const;
     
 private:

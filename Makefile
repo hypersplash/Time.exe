@@ -4,7 +4,7 @@
 # Force bash shell for cross-platform compatibility
 SHELL := /bin/bash
 
-TARGET = abandonedwhere
+TARGET = timeexe
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -DNDEBUG -march=native -flto
 
@@ -105,7 +105,8 @@ SOURCES = main.cpp \
           UIRenderer.cpp \
           Player.cpp \
           GameConfig.cpp \
-          GameState.cpp
+          GameState.cpp \
+          Commands.cpp
 
 OBJECTS = $(SOURCES:%.cpp=$(OBJ_DIR)/%.o)
 EXECUTABLE = $(BIN_DIR)/$(TARGET)

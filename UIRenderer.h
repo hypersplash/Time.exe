@@ -1,5 +1,6 @@
 #ifndef UI_RENDERER_H
 #define UI_RENDERER_H
+#include <string>
 
 // Constants for UI rendering
 constexpr float PAUSE_OVERLAY_ALPHA = 0.6f;
@@ -25,8 +26,16 @@ private:
     int lastWidth = 0, lastHeight = 0, lastFontSize = 0;
 };
 
+struct ConsoleInput {
+    std::string text;
+    int cursorPosition = 0;
+    bool active = false;
+};
+
 // Console rendering function with cached layout
-void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize);
+void DrawConsole(bool showFPS, int consoleWidth, int consoleHeight, int consoleFontSize, const ConsoleInput& consoleInput);
+
+void DrawConsoleInputBox(const ConsoleLayout& layout, const ConsoleInput& consoleInput);
 
 // Title screen rendering function
 void DrawTitleScreen(int screenWidth, int screenHeight);

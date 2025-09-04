@@ -7,6 +7,7 @@
 #include "GameConfig.h"
 #include "GameState.h"
 #include "Version.h"
+#include "Commands.h"
 
 namespace {
     void initializeConsole() {
@@ -24,21 +25,46 @@ namespace {
                      config.friction, config.maxSpeed, texture);
     }
     
-    void updateGame(Player& player, GameState& gameState, const GameConfig& config, float deltaTime) {
-        // Handle input based on current state
-        if (gameState.isOnTitleScreen()) {
-            gameState.handleTitleInput();
+    void updateGame(Player& player, GameState& gameState, const GameConfig& config, float deltaTime, CommandParser& commandParser, ConsoleInput& consoleInput) {
+    // Handle input based on current state
+    if (gameState.isOnTitleScreen()) {
+        gameState.handleTitleInput();
+    } else {
+        if (gameState.consoleVisible && IsKeyDown(KEY_LEFT_ALT) && IsKeyPressed(KEY_C)) {
+            consoleInput.active = !consoleInput.active;
+        }
+
+        if (consoleInput.active) {
+            int key = GetCharPressed();
+            if (key >= 32 && key <= 125) {
+                consoleInput.text.insert(consoleInput.cursorPosition, 1, (char)key);
+                consoleInput.cursorPosition++;
+            }
+
+            if (IsKeyPressed(KEY_BACKSPACE)) {
+                if (consoleInput.cursorPosition > 0) {
+                    consoleInput.text.erase(consoleInput.cursorPosition - 1, 1);
+                    consoleInput.cursorPosition--;
+                }
+            }
+
+            if (IsKeyPressed(KEY_ENTER)) {
+                commandParser.parseAndExecute(consoleInput.text, player);
+                consoleInput.text.clear();
+                consoleInput.cursorPosition = 0;
+            }
         } else {
             gameState.handleGameInput(config.consoleEnabled);
-            
-            // Update player only when actually playing (not paused)
-            if (gameState.isInGame()) {
-                player.update(deltaTime, config.screenWidth, config.screenHeight);
-            }
+        }
+
+        // Update player only when actually playing (not paused)
+        if (gameState.isInGame()) {
+            player.update(deltaTime, config.screenWidth, config.screenHeight, consoleInput.active);
         }
     }
+}
     
-    void renderGame(const Player& player, const GameConfig& config, const GameState& gameState) {
+    void renderGame(const Player& player, const GameConfig& config, const GameState& gameState, const ConsoleInput& consoleInput) {
         BeginDrawing();
         
         if (gameState.isOnTitleScreen()) {
@@ -59,7 +85,7 @@ namespace {
             // Draw console if enabled and visible
             if (config.consoleEnabled && gameState.consoleVisible) {
                 DrawConsole(config.showFPS, config.consoleWidth, 
-                           config.consoleHeight, config.consoleFontSize);
+                           config.consoleHeight, config.consoleFontSize, consoleInput);
             }
             
             // Draw pause screen
@@ -92,16 +118,18 @@ int main() {
     const Texture2D playerTexture = LoadPlayerTexture(config.spritePath);
     Player player = createPlayer(config, playerTexture);
     GameState gameState;  // Starts in TITLE_SCREEN state
+    CommandParser commandParser;
+    ConsoleInput consoleInput;
     
     // Main game loop
     while (!WindowShouldClose() && !gameState.shouldQuit) {
         const float deltaTime = GetFrameTime();
         
         // Update game state and logic
-        updateGame(player, gameState, config, deltaTime);
+        updateGame(player, gameState, config, deltaTime, commandParser, consoleInput);
         
         // Render everything
-        renderGame(player, config, gameState);
+        renderGame(player, config, gameState, consoleInput);
     }
     
     // Cleanup
