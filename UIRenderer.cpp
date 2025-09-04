@@ -83,7 +83,7 @@ void DrawTitleScreen(int screenWidth, int screenHeight) {
     ClearBackground(DARKGRAY);
     
     // Title text configuration
-    constexpr const char* gameTitle = "ABANDONED WHERE";
+    constexpr const char* gameTitle = GAME_NAME_CAPS;
     constexpr const char* startInstruction = "Press SPACE to start";
     constexpr const char* quitInstruction = "Press ESC to quit";
     

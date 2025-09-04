@@ -6,6 +6,7 @@
 #include "Player.h"
 #include "GameConfig.h"
 #include "GameState.h"
+#include "Version.h"
 
 namespace {
     void initializeConsole() {
@@ -81,7 +82,7 @@ int main() {
     consoleCapture.setMaxDisplayChars(config.calculateMaxDisplayChars());
     
     // Initialize window and disable default exit key
-    InitWindow(config.screenWidth, config.screenHeight, "Abandoned Where?");
+    InitWindow(config.screenWidth, config.screenHeight, WINDOW_TITLE);
     SetExitKey(KEY_NULL);
     SetTargetFPS(60);
     
