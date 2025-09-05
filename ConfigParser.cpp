@@ -5,20 +5,20 @@
 #include <algorithm>
 
 namespace {
-    // Helper function to trim whitespace (more efficient than repeated find operations)
+    // Helper function to trim whitespace from both ends of a string.
     void trimWhitespace(std::string& str) {
-        // Trim leading whitespace
+        // Trim leading whitespace.
         str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
             return !std::isspace(ch);
         }));
         
-        // Trim trailing whitespace
+        // Trim trailing whitespace.
         str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
             return !std::isspace(ch);
         }).base(), str.end());
     }
     
-    // Helper to trim quotes from config values
+    // Helper function to trim quotes from the beginning and end of a string.
     void trimQuotes(std::string& str) {
         if (!str.empty() && (str.front() == '"' || str.front() == '\'')) {
             str.erase(0, 1);
@@ -28,12 +28,13 @@ namespace {
         }
     }
     
-    // Check if line should be skipped (empty or comment)
+    // Checks if a line is a comment or empty and should be skipped.
     bool shouldSkipLine(const std::string& line) {
         return line.empty() || line[0] == '#';
     }
 }
 
+// Parses an INI file and returns a map of key-value pairs.
 std::unordered_map<std::string, std::string> parseINI(const std::string& filepath) {
     std::unordered_map<std::string, std::string> result;
     
@@ -46,8 +47,9 @@ std::unordered_map<std::string, std::string> parseINI(const std::string& filepat
     }
     
     std::string line;
-    line.reserve(256);  // Reserve space to reduce allocations
+    line.reserve(256);  // Reserve space to reduce re-allocations in the loop.
     
+    // Read the file line by line.
     while (std::getline(file, line)) {
         trimWhitespace(line);
         
@@ -55,22 +57,22 @@ std::unordered_map<std::string, std::string> parseINI(const std::string& filepat
             continue;
         }
         
-        // Find the key-value separator
+        // Find the position of the '=' separator.
         const size_t equalPos = line.find('=');
         if (equalPos == std::string::npos) {
-            continue;  // Skip malformed lines
+            continue;  // Skip lines that do not contain a '='.
         }
         
-        // Extract key and value
+        // Extract the key and value from the line.
         std::string key = line.substr(0, equalPos);
         std::string value = line.substr(equalPos + 1);
         
-        // Trim and clean key and value
+        // Clean up the key and value.
         trimWhitespace(key);
         trimWhitespace(value);
         trimQuotes(value);
         
-        // Only add non-empty keys
+        // Add the key-value pair to the map if the key is not empty.
         if (!key.empty()) {
             result.emplace(std::move(key), std::move(value));
         }
