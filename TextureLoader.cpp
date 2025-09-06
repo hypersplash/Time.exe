@@ -13,10 +13,10 @@ Texture2D LoadPlayerTexture(const std::string& path) {
         texture = LoadTextureFromImage(img);
         UnloadImage(img);
         // Log a message to the console indicating that the fallback texture is being used.
-        consoleCapture.addLine("Using fallback texture - failed to load: " + path);
+        consoleCapture.addLine("RAYLIB: Failed to load player texture, using fallback");
     } else {
         // Log a success message to the console.
-        consoleCapture.addLine("Player texture loaded successfully (" + path + ")");
+        consoleCapture.addLine("RAYLIB: Player texture loaded");
     }
     return texture;
 }
